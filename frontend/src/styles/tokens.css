@@ -1,0 +1,46 @@
+/* Design tokens (Section 4). Tailwind v4 theme + raw custom properties.
+   Light theme only. AA-checked contrast on text colors. */
+@import 'tailwindcss';
+
+@theme {
+  --color-brand: #ff7000;
+  --color-brand-hover: #e66500;
+  --color-navy: #00356b;
+  --color-ink: #1a1a1a;
+  --color-muted: #8a8a8a;
+  --color-tile: #f2f2f2;
+  --color-line: #d9d9d9;
+  --color-teal: #1f6f8b;
+  --color-stock-green: #3ba935;
+  --color-stock-amber: #f5a800;
+  --color-stock-red: #d32f2f;
+  --color-white: #ffffff;
+
+  --radius-tile: 2px;
+  --radius-btn: 2px;
+  --radius-pill: 999px;
+
+  --font-sans: var(--font-roboto), 'Roboto', system-ui, -apple-system, sans-serif;
+
+  --container-page: 1440px;
+}
+
+:root {
+  --brand-orange: #ff7000;
+  --brand-navy: #00356b;
+  --text: #1a1a1a;
+  --text-muted: #8a8a8a;
+  --surface-tile: #f2f2f2;
+  --border: #d9d9d9;
+  --link-teal: #1f6f8b;
+  --stock-green: #3ba935;
+  --stock-amber: #f5a800;
+  --stock-red: #d32f2f;
+  --gutter: 16px;
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --gutter: 32px;
+  }
+}

@@ -1,0 +1,150 @@
+@import './tokens.css';
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background: var(--color-white);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Visible focus rings for keyboard users (AA). */
+  :focus-visible {
+    outline: 2px solid var(--brand-orange);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-weight: 700;
+    color: var(--color-ink);
+  }
+}
+
+@layer components {
+  /* Page container: 1440px max, 16px mobile / 32px desktop gutters. */
+  .page-container {
+    max-width: var(--container-page);
+    margin-inline: auto;
+    padding-inline: 16px;
+  }
+
+  @media (min-width: 1024px) {
+    .page-container {
+      padding-inline: 32px;
+    }
+  }
+
+  .h1-page {
+    font-size: 28px;
+    line-height: 1.15;
+  }
+
+  @media (min-width: 1024px) {
+    .h1-page {
+      font-size: 40px;
+    }
+  }
+
+  /* Sliding overlays lock body scroll via a helper class. */
+  .scroll-locked {
+    overflow: hidden;
+  }
+}
+
+/* Admin-style scrollable lists: slim scrollbar. */
+.slim-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line) transparent;
+}
+.slim-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.slim-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--color-line);
+  border-radius: 4px;
+}
+
+/* Shared animation keyframes for UI primitives (drawer, modal, toast, popovers).
+   Radix Presence waits for animationend on data-state changes, so both the
+   "in" and "out" keyframes make enter/exit transitions work without JS. */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes slide-in-left {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes slide-out-left {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-100%);
+  }
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes modal-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}

@@ -1,0 +1,6 @@
+# ADR 0002 — Product search vector maintained by triggers, not a generated column
+
+**Status:** accepted (2026-11-21)
+**Context:** Spec Section 8 asks for a `search_vector` on `Product` with weights: name (A), brand name + article numbers (B), description (C). A PostgreSQL STORED generated column cannot reference other tables (Brand, Variant), so the spec's "generated/maintained via SQL migration" cannot be satisfied by a pure generated column.
+**Decision:** `Product.searchVector` is a plain `tsvector` column (declared as `Unsupported("tsvector")` in Prisma, created by Prisma Migrate). A `BEFORE INSERT/UPDATE` trigger sets it from the product's own columns via `toolhub_product_tsv()`; `AFTER` triggers on `Variant` (article no changes) and `Brand` (renames) refresh affected products through `product_tsv_refresh()`. An IMMUTABLE `toolhub_unaccent()` wrapper (two-arg `unaccent`) makes accent folding usable in expression contexts.
+**Consequences:** Brand/article changes refresh vectors automatically; imports need no manual vector work. HTML is stripped from `descriptionHtml` with `regexp_replace` before indexing. GIN index `products_search_tsv_idx` serves queries; `pg_trgm` GIN indexes on `Variant.articleNo` and `Product.name` provide typo tolerance.
