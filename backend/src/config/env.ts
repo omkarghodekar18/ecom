@@ -99,3 +99,23 @@ export function corsOrigins(): string[] {
     .map((s) => s.trim())
     .filter(Boolean);
 }
+
+/** Escape every regex metacharacter in a literal string. */
+function escapeRegExp(literal: string): string {
+  return literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * True when `origin` matches a CORS_ORIGINS entry. Entries are exact origins
+ * (`https://app.example.com`) or patterns containing `*` wildcards
+ * (`https://preview-*.space-z.ai`, `https://*.example.com`). Wildcards match
+ * any characters including none. Requests without an Origin header (curl,
+ * server-to-server) are allowed separately in the cors middleware.
+ */
+export function isOriginAllowed(origin: string): boolean {
+  return corsOrigins().some((entry) =>
+    entry.includes('*')
+      ? new RegExp(`^${entry.split('*').map(escapeRegExp).join('.*')}$`).test(origin)
+      : entry === origin,
+  );
+}

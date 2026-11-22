@@ -6,7 +6,7 @@ import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import swaggerUi from 'swagger-ui-express';
 import { pinoHttp } from 'pino-http';
-import { corsOrigins, getEnv } from './config/env.js';
+import { getEnv, isOriginAllowed } from './config/env.js';
 import { logger } from './config/logger.js';
 import { API_PREFIX } from './config/constants.js';
 import { requestIdMiddleware } from './common/middleware/request-id.js';
@@ -47,8 +47,9 @@ export function createApp(): Express {
   app.use(
     cors({
       origin(origin, cb) {
-        // Allow non-browser tools (no Origin header) and the configured allow-list.
-        if (!origin || corsOrigins().includes(origin)) return cb(null, true);
+        // Allow non-browser tools (no Origin header) and the configured
+        // allow-list (exact origins or wildcard patterns — see env.ts).
+        if (!origin || isOriginAllowed(origin)) return cb(null, true);
         return cb(new Error(`Origin ${origin} not allowed by CORS`));
       },
       credentials: true,

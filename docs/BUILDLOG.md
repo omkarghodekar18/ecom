@@ -489,3 +489,26 @@ were lost; the DB data itself survived). Recovery + full re-verification:
   jobs table.
 - Dev DB state confirmed intact across the recycle: 238 products / 769
   variants / 163 categories / seeded admin.
+
+## Fix: CORS allow-list wildcard support (2026-11-22, session 3)
+
+**Symptom:** adding any item to cart from the hosted preview origin failed
+with "Could not add to cart — Something went wrong on our side" while
+browsing worked. Backend log showed
+`Origin https://preview-chat-….space-z.ai not allowed by CORS` → the cors
+middleware errored → 500 on every client-side mutation (browsers send
+`Origin` on same-origin POSTs too; GETs/SSR were unaffected).
+
+**Fix (meaningful, no dead code):** `CORS_ORIGINS` entries now support `*`
+wildcard patterns (`isOriginAllowed()` in `config/env.ts`, used by the cors
+middleware in `app.ts`; the previous exact-`includes()` call removed).
+`https://preview-*.space-z.ai` added to the dev allow-list — no per-session
+hardcoding. `.env.example` documents the pattern syntax.
+
+**Tests:** new `tests/unit/cors-origins.test.ts` (4 tests: exact match,
+wildcard match incl. empty `*`, boundary non-matches — wrong prefix,
+suffix-appended attacker host, scheme mismatch). Backend 289/289 green,
+tsc/eslint clean. Verified live end-to-end through the actual preview
+gateway: add → get → update → remove cart items all succeed with
+browser-like `Origin`/`Referer` headers; unknown origins still rejected;
+Playwright 7/7 green (localhost path unchanged).
