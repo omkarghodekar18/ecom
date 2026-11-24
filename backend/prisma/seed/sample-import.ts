@@ -1,6 +1,7 @@
 // Sample import workbook (spec Section 22): a VALID .xlsx exercising the full
 // Products/Variants schema of the bulk import (Section 16.2), containing three
 // families that do NOT exist in the seed catalog (so dry-runs create them).
+import { existsSync } from 'node:fs';
 import ExcelJS from 'exceljs';
 import { makeGtin13 } from './util.js';
 
@@ -222,8 +223,13 @@ const VARIANTS: VariantRow[] = [
   },
 ];
 
-/** Writes the sample workbook to `prisma/seed/sample-import.xlsx`. */
+/** Writes the sample workbook to `prisma/seed/sample-import.xlsx`.
+ *  Skipped when the file exists: the workbook is tracked in git and ExcelJS
+ *  embeds the creation timestamp, so rewriting it dirtied the working tree on
+ *  every seed run. Delete the file (or change PRODUCTS/VARIANTS) to
+ *  regenerate. */
 export async function writeSampleImportWorkbook(target: string): Promise<void> {
+  if (existsSync(target)) return;
   const wb = new ExcelJS.Workbook();
   wb.creator = 'ToolHub seed';
   wb.created = new Date();

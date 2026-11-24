@@ -13,6 +13,9 @@ else
     echo "Initializing data dir..."
     "$NATIVE/bin/initdb" -D "$ROOT/data" -U postgres --auth=trust -E UTF8
   fi
+  # Socket dir is empty while the server is down, so the sandbox recycle strips
+  # it — recreate before start or postgres FATALs on the lock file.
+  mkdir -p "$ROOT/db-socket" && chmod 700 "$ROOT/db-socket"
   "$NATIVE/bin/pg_ctl" -D "$ROOT/data" \
     -o "-p 5433 -k $ROOT/db-socket -c listen_addresses=127.0.0.1 -c max_connections=200" \
     -l "$ROOT/pg.log" -w start
