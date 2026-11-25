@@ -560,3 +560,24 @@ byte-identical across repeated seeds and regenerates when deleted; variant ids
 rotate after re-seed and the guest cart flow keeps working with the old cookie
 (GET → 0 items, add with new variant id → 201 through the frontend proxy);
 `tsc --noEmit` clean; backend suite 289/289.
+
+## Fix: consolidate all Postgres recovery into pg-start.sh (2026-11-25, session 5)
+
+**Symptom:** after a recycle that wiped the pgtest `data/` dir entirely,
+`start-app.sh` aborted (`cd: .../pgtest/data: No such file or directory`) —
+its runtime-dirs restore block `cd`'d into the data dir before `pg-start.sh`
+ever got the chance to initdb a missing one.
+
+**Fix:** the restore block moved into `pg-start.sh` (guarded: only for an
+existing `PG_VERSION`, alongside the socket-dir fix); `start-app.sh` now only
+delegates. One script owns every recycle state: fresh (initdb), surviving
+(runtime dirs + socket dir), running (no-op).
+
+**Also this session:** the app now runs against Supabase Postgres
+(`DATABASE_URL` → 6543 transaction pooler for Prisma runtime, `DIRECT_URL` →
+5432 session pooler for migrations; seed run through the session URL since it
+uses interactive transactions). End-to-end on Supabase: 28 migrations, full
+seed (211 products / 767 variants), storefront/cart/admin flows, and the whole
+pg-boss import lifecycle — upload → dry-run plan → commit (11 writes +
+`web.revalidate` worker revalidated ISR tags on the frontend) → rollback
+(`restored: 11`).

@@ -18,22 +18,12 @@ wait_for() { # wait_for <url> <label> [timeout_s]
   return 1
 }
 
-# 1) Postgres
-if curl -sf -m 2 "http://127.0.0.1:4000/api/v1/health" >/dev/null 2>&1; then :; fi
-NATIVE="$ROOT/scripts/pgtest/node_modules/@embedded-postgres/linux-x64/native"
-export PATH="$NATIVE/bin:$PATH"
-if "$NATIVE/bin/pg_ctl" -D "$ROOT/scripts/pgtest/data" status >/dev/null 2>&1; then
+# 1) Postgres (all recovery — initdb, stripped runtime dirs, socket dir —
+#    lives in pg-start.sh, which handles every sandbox-recycle state.)
+if "$ROOT/scripts/pgtest/node_modules/@embedded-postgres/linux-x64/native/bin/pg_ctl" \
+    -D "$ROOT/scripts/pgtest/data" status >/dev/null 2>&1; then
   echo "[ok] Postgres already running on 127.0.0.1:5433"
 else
-  # The sandbox recycle strips empty runtime dirs + perms from the data dir.
-  (
-    cd "$ROOT/scripts/pgtest/data"
-    for d in pg_notify pg_stat pg_stat_tmp pg_logical/snapshots pg_logical/mappings \
-             pg_replslot pg_serial pg_snapshots pg_twophase pg_commit_ts \
-             pg_dynshmem pg_tblspc pg_multixact/members pg_multixact/offsets \
-             pg_wal/archive_status; do mkdir -p "$d"; done
-    chmod 700 .
-  )
   bash "$ROOT/scripts/pg-start.sh"
 fi
 
