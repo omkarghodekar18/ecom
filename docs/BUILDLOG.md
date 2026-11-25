@@ -512,3 +512,72 @@ tsc/eslint clean. Verified live end-to-end through the actual preview
 gateway: add → get → update → remove cart items all succeed with
 browser-like `Origin`/`Referer` headers; unknown origins still rejected;
 Playwright 7/7 green (localhost path unchanged).
+
+## Fix: recreate the postgres socket dir before pg_ctl start (2026-11-24, session 4)
+
+**Symptom:** after a full sandbox recycle (node_modules, env files and the
+`data/` dir all wiped) the embedded Postgres failed to come back up:
+`FATAL: could not create lock file
+".../pgtest/db-socket/.s.PGSQL.5433.lock": No such file or directory`.
+`db-socket/` is empty whenever the server is down, and empty directories are
+exactly what the recycle strips — `pg-start.sh` referenced the directory but
+never created it.
+
+**Fix (3 lines):** `pg-start.sh` now `mkdir -p` + `chmod 700` the socket dir
+immediately before `pg_ctl start`. Recovery from a wiped sandbox is now fully
+automatic: `npm install` ×3 → env from `.env.example` → `pg-start.sh`
+(fresh initdb + `check.js` creates `toolhub`/`toolhub_test`) →
+`db:migrate` + `db:seed` → `start-app.sh`.
+
+**Tests (end-to-end, live):** fresh initdb → 28 migrations applied → seed
+(163 categories / 10 brands / 211 products / 767 variants / 399 images) →
+backend :4000 + frontend :3000 up via the daemon scripts. Storefront,
+product, category, search and cart pages return 200; the full guest cart
+lifecycle (add with preview `Origin` + stale cookie → 201, GET → 5 items,
+re-add → 10, fresh visitor → new random `th_cart` token) passes through the
+frontend proxy; CORS preflight 204 with allow-origin echo; admin login +
+`/admin` 200 + imports API 200; media assets serve as `image/svg+xml` through
+backend and proxy.
+
+## Fix: seed idempotency on a used database (2026-11-24, session 4)
+
+**Symptom:** `npm run db:seed` (documented in-code as idempotent — "variants
+are rebuilt from scratch on every run") failed with a Prisma 23001 as soon as
+any guest had cart lines: `delete or delete on table "Variant" violates
+RESTRICT setting of foreign key constraint "CartItem_variantId_fkey"`.
+
+**Fix (2 changes, both meaningful):**
+- `prisma/seed/products.ts`: stale `CartItem` rows referencing the rebuilt
+  variants are deleted before `variant.deleteMany` — the lines would dangle
+  after the rebuild anyway; placed orders are untouched (OrderLine.variant is
+  `SetNull` + snapshot fields).
+- `prisma/seed/sample-import.ts`: `writeSampleImportWorkbook()` now skips
+  when the file exists (ExcelJS embeds the creation timestamp, so every seed
+  run dirtied the tracked `.xlsx`). Delete the file to regenerate.
+
+**Tests:** re-seed on the live, cart-carrying dev DB succeeds; the xlsx stays
+byte-identical across repeated seeds and regenerates when deleted; variant ids
+rotate after re-seed and the guest cart flow keeps working with the old cookie
+(GET → 0 items, add with new variant id → 201 through the frontend proxy);
+`tsc --noEmit` clean; backend suite 289/289.
+
+## Fix: consolidate all Postgres recovery into pg-start.sh (2026-11-25, session 5)
+
+**Symptom:** after a recycle that wiped the pgtest `data/` dir entirely,
+`start-app.sh` aborted (`cd: .../pgtest/data: No such file or directory`) —
+its runtime-dirs restore block `cd`'d into the data dir before `pg-start.sh`
+ever got the chance to initdb a missing one.
+
+**Fix:** the restore block moved into `pg-start.sh` (guarded: only for an
+existing `PG_VERSION`, alongside the socket-dir fix); `start-app.sh` now only
+delegates. One script owns every recycle state: fresh (initdb), surviving
+(runtime dirs + socket dir), running (no-op).
+
+**Also this session:** the app now runs against Supabase Postgres
+(`DATABASE_URL` → 6543 transaction pooler for Prisma runtime, `DIRECT_URL` →
+5432 session pooler for migrations; seed run through the session URL since it
+uses interactive transactions). End-to-end on Supabase: 28 migrations, full
+seed (211 products / 767 variants), storefront/cart/admin flows, and the whole
+pg-boss import lifecycle — upload → dry-run plan → commit (11 writes +
+`web.revalidate` worker revalidated ISR tags on the frontend) → rollback
+(`restored: 11`).

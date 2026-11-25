@@ -12,7 +12,21 @@ else
   if [ ! -f "$ROOT/data/PG_VERSION" ]; then
     echo "Initializing data dir..."
     "$NATIVE/bin/initdb" -D "$ROOT/data" -U postgres --auth=trust -E UTF8
+  else
+    # The sandbox recycle strips empty runtime dirs + perms from a surviving
+    # data dir — postgres FATALs without them, so recreate before start.
+    (
+      cd "$ROOT/data"
+      for d in pg_notify pg_stat pg_stat_tmp pg_logical/snapshots pg_logical/mappings \
+               pg_replslot pg_serial pg_snapshots pg_twophase pg_commit_ts \
+               pg_dynshmem pg_tblspc pg_multixact/members pg_multixact/offsets \
+               pg_wal/archive_status; do mkdir -p "$d"; done
+      chmod 700 .
+    )
   fi
+  # Socket dir is empty while the server is down, so the sandbox recycle strips
+  # it — recreate before start or postgres FATALs on the lock file.
+  mkdir -p "$ROOT/db-socket" && chmod 700 "$ROOT/db-socket"
   "$NATIVE/bin/pg_ctl" -D "$ROOT/data" \
     -o "-p 5433 -k $ROOT/db-socket -c listen_addresses=127.0.0.1 -c max_connections=200" \
     -l "$ROOT/pg.log" -w start

@@ -745,7 +745,11 @@ export async function seedProducts(
     });
     productIds.set(spec.slug, product.id);
     // Idempotency: variants (cascading to attribute values, tiers and customer
-    // prices) and images are rebuilt from scratch on every run.
+    // prices) and images are rebuilt from scratch on every run. Cart lines
+    // pointing at the old variants are dropped first: CartItem→Variant is
+    // RESTRICT (no cascade) and the lines would dangle after the rebuild —
+    // placed orders are unaffected (OrderLine.variant is SetNull + snapshot).
+    await tx.cartItem.deleteMany({ where: { variant: { productId: product.id } } });
     await tx.variant.deleteMany({ where: { productId: product.id } });
     await tx.productImage.deleteMany({ where: { productId: product.id } });
     await tx.variant.createMany({
